@@ -7,6 +7,7 @@ A console-based Student Management System developed using C++.
 - Add Student
 - Search Student
 - Update Student
+- Delete Student
 - File Handling
 - OOP
 
@@ -32,6 +33,5 @@ student.exe
 
 ## Future Improvements
 
-- Delete Student
 - MySQL Database
 - GUI
