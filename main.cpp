@@ -1,180 +1,308 @@
 #include <iostream>
+#include <string>
 #include <fstream>
 #include <windows.h>
-#include <sstream>
+
 using namespace std;
 
-class Student{
-private:
-string Name, RollNo;
-float CGPA;
+class student{
+    private:
+    string name;
+    string rollNo;
+    float cgpa;
 
-public:
-Student():Name(""), RollNo(""),CGPA(0.0){}
+    public:
+    student(): name(""), rollNo(""), cgpa(0.0){
+    }
 
-void setName(string name){
-	Name = name;
-}
+    void setName(string name){
+        this->name = name;
+    }
+    void setRollNo(string rollNo){
+        this->rollNo = rollNo;
+    }
+    void setCgpa(float cgpa){
+        this->cgpa = cgpa;
+    }
 
-void setRollNo(string rollNo) { 
- RollNo = rollNo;
-}
-
-void setCGPA(float cgpa) { 
- CGPA = cgpa;
-}
-
-string getName(){
-	return Name;
-}
-
-
-string getRollNo() {
- return RollNo;
-}
-
-float getCGPA() {
- return CGPA;
-}
-
+    string getName(){
+        return name;
+    }
+    string getRollNo(){
+        return rollNo;
+    }
+    float getCgpa(){
+        return cgpa;
+    }
 };
 
-void addStudent(Student s){
-string name, rollNo;
-float cgpa;
+void addStudent(student s){
+    string name, rollNo;
+    float cgpa;
 
-cout<<"Enter Name Of Student: ";
-cin.ignore();
-getline(cin, name);
-s.setName(name);
+    cout<< "Enter Name: "<<endl;
+    cin.ignore();
+    getline(cin, name);
+    s.setName(name);
 
-cout << "Enter RollNo of Student: ";
-cin >> rollNo;
-s.setRollNo(rollNo);
+    cout<< "Enter roll number: "<<endl;
+    getline(cin, rollNo);
+    s.setRollNo(rollNo);
 
-cout << "Enter CGPA of Student: ";
-cin >> cgpa;
-s.setCGPA(cgpa);
+    cout<<"Enter cgpa: "<<endl;
+    cin>>cgpa;
 
-ofstream out("Student.txt", ios::app);
-if(!out){
-	cout<<"ERROR: File Not Opened!"<<endl;
-}
-else{
-out<<s.getName()<<" : "<<s.getRollNo()<<" : "<<s.getCGPA()<<endl;
-cout<<"Student Added Successfuly!"<<endl;
-}
-out.close();
-}
+    if(cin.fail()){
+        cin.clear();
+        cin.ignore(10000, '\n');
+        cout<<"Invalid CGPA!"<<endl;
+        return;
+    }
 
-void search(Student s){
-string name;
-cout<<"Enter Name of Student: ";
-cin>>name;
+    s.setCgpa(cgpa);
 
-ifstream in("Student.txt");
-if(!in){
-cout<<"Error: File Can Not Open!"<<endl;
-}
-else{
-string line;
-bool found = false;
-while(getline(in,line)){
-int pos = line.find(name);
-if(pos != string::npos){
- cout << " Name | RollNo | CGPA" << endl;
- cout << line << endl;
- found = true;
-}
-}
-if(!found){
-	cout<<"Student Not Found!"<<endl;
-}
-}
+    ofstream out("Student.txt", ios::app);
+
+    if(!out){
+        cout<<"Error: Student file could not be opened!"<<endl;
+        return;
+    }
+
+    out<< s.getName() << " : "<< s.getRollNo()<< " : "<< s.getCgpa()<< endl;
+
+    if(out.fail()){
+        cout<<"Error: Student could not be added!"<<endl;
+        out.close();
+        return;
+    }
+
+    cout<< "student added!"<<endl;
+    out.close();
 }
 
-void update(){
-	string rollNo;
-cout<<"Enter RollNo of Student: ";
-cin>>rollNo;
+void searchStudent(){
+    string rollNo;
 
-ifstream in("Student.txt");
-if(!in){
-	cout<<"Error:"<<endl;
+    cout<< "Enter Roll number of student: "<<endl;
+    cin.ignore();
+    getline(cin, rollNo);
+
+    ifstream in("Student.txt");
+
+    if(!in){
+        cout<<"Error: Student file could not be opened!"<<endl;
+        return;
+    }
+
+    string line;
+    bool found = false;
+
+    while(getline(in, line)){
+        if(line.find(rollNo)!=string::npos){
+            found = true;
+            cout<< line << endl;
+            break;
+        }
+    }
+
+    if(!found){
+        cout<< "Student not found"<<endl;
+    }
+
+    in.close();
 }
-ofstream out("Student Temp.txt");
-if(!out){
-	cout<<"Error:";
-out.close();
+
+void updateStudent(){
+    cout<< "Enter roll no. of student to be updated: "<<endl;
+
+    string rollNo;
+    cin.ignore();
+    getline(cin, rollNo);
+
+    ifstream in("Student.txt");
+
+    if(!in){
+        cout<<"Error: Student file could not be opened!"<<endl;
+        return;
+    }
+
+    bool found = false;
+    ofstream out("temp.txt");
+
+    if(!out){
+        cout<<"Error: Temporary file could not be created!"<<endl;
+        in.close();
+        return;
+    }
+
+    string line;
+
+    while(getline(in, line)){
+        if(line.find(rollNo)!=string::npos){
+            found = true;
+
+            cout << "Enter new cgpa: "<<endl;
+            float cgpa;
+            cin>> cgpa;
+
+            if(cin.fail()){
+                cin.clear();
+                cin.ignore(10000, '\n');
+                cout<<"Invalid CGPA!"<<endl;
+                out.close();
+                in.close();
+                remove("temp.txt");
+                return;
+            }
+
+            string CGPA = to_string(cgpa);
+            line.replace(line.find_last_of(':')+2, string::npos, CGPA);
+
+            cout<< "Updated Successfully"<<endl;
+        }
+
+        out<< line<< endl;
+    }
+
+    if(!found){
+        cout<< "Student not found"<<endl;
+        out.close();
+        in.close();
+        remove("temp.txt");
+        return;
+    }
+
+    out.close();
+    in.close();
+
+    if(remove("Student.txt") != 0){
+        cout<<"Error: Could not remove Student.txt"<<endl;
+        remove("temp.txt");
+        return;
+    }
+
+    if(rename("temp.txt", "Student.txt") != 0){
+        cout<<"Error: Could not rename temporary file!"<<endl;
+        return;
+    }
 }
-string line;
-bool found = false;
-while(getline(in,line)){
- int pos = line.find(rollNo);
- if (pos != string::npos) {
-  found = true;
-  
-  float newcgpa;
-  cout<<"Enter New CGPA: ";
-  cin>>newcgpa;
-  
-  stringstream ss;
-  ss<<newcgpa;
-  string newCGPA = ss.str();
-  
-  int cgpaPos = line.find_last_of(':');
-  line.replace(cgpaPos+2, string::npos, newCGPA);
-  cout<<"CGPA updated for the student with RollNo: "<<rollNo<<endl;
-}
-out<<line<<endl;
-}
-if(!found){
-	cout<<"Student Not found!"<<endl;
-}
-out.close();
-in.close();
-remove("Student.txt");
-rename("Student Temp.txt", "Student.txt");
+
+void deleteStudent(){
+    string rollNo;
+
+    cout<< "Enter Roll number of student to be deleted: "<<endl;
+    cin.ignore();
+    getline(cin, rollNo);
+
+    ifstream in("Student.txt");
+
+    if(!in){
+        cout<<"Error: Student file could not be opened!"<<endl;
+        return;
+    }
+
+    string line;
+    bool found = false;
+
+    ofstream out("temp.txt");
+
+    if(!out){
+        cout<<"Error: Temporary file could not be created!"<<endl;
+        in.close();
+        return;
+    }
+
+    while(getline(in, line)){
+        if(line.find(rollNo)!=string::npos){
+            found = true;
+            cout<< line <<" successfully deleted"<<endl;
+            continue;
+        }
+
+        out<< line<< endl;
+    }
+
+    if(!found){
+        cout<< "Student not found"<<endl;
+        out.close();
+        in.close();
+        remove("temp.txt");
+        return;
+    }
+
+    out.close();
+    in.close();
+
+    if(remove("Student.txt") != 0){
+        cout<<"Error: Could not remove Student.txt"<<endl;
+        remove("temp.txt");
+        return;
+    }
+
+    if(rename("temp.txt", "Student.txt") != 0){
+        cout<<"Error: Could not rename temporary file!"<<endl;
+        return;
+    }
 }
 
 int main(){
-Student s;
-bool exit = false;
-while(!exit){
-system("cls");
-cout << "Welcome To Student Management System" << endl;
-cout << "************************************" << endl;
-cout << "1.Add Student." << endl;
-cout << "2.Search Student." << endl;
-cout << "3.Update Student." << endl;
-cout << "4.Exit" <<endl;
-cout << "Enter Choice: ";
-int val;
-cin >> val;
+    student s;
+    bool exit = false;
 
-if(val==1){
-system("cls");
-addStudent(s);
-Sleep(4000);
-}
+    while(!exit){
+        system("cls");
 
-else if(val==2){
-system("cls");
-search(s);
-Sleep(5000);	
-}
+        cout << "Welcome To Student Management System" << endl;
+        cout << "************************************" << endl;
+        cout << "1.Add Student." << endl;
+        cout << "2.Search Student." << endl;
+        cout << "3.Update Student." << endl;
+        cout << "4.Delete Student." <<endl;
+        cout << "5.Exit" <<endl;
+        cout << "Enter Choice: ";
 
-else if(val==3){
-system("cls");
-update();
-Sleep(5000);	
-}
+        int val;
+        cin >> val;
 
-else if(val==4){
-	system("cls");
-	exit = true;
-	cout<<"Good Luck!";
-	Sleep(3000);
-}
-}
+        if(cin.fail()){
+            cin.clear();
+            cin.ignore(10000, '\n');
+            cout<<"Invalid choice!"<<endl;
+            Sleep(2000);
+            continue;
+        }
+
+        if(val == 1){
+            system("cls");
+            addStudent(s);
+            Sleep(4000);
+        }
+        else if(val == 2){
+            system("cls");
+            searchStudent();
+            Sleep(4000);
+        }
+        else if(val == 3){
+            system("cls");
+            updateStudent();
+            Sleep(4000);
+        }
+        else if(val == 4){
+            system("cls");
+            deleteStudent();
+            Sleep(4000);
+        }
+        else if(val == 5){
+            system("cls");
+            cout<< "Exiting Program"<<endl;
+            exit = true;
+            Sleep(2000);
+        }
+        else{
+            cout<<"Invalid choice!"<<endl;
+            Sleep(2000);
+        }
+    }
+
+    return 0;
 }
