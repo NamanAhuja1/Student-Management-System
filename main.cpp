@@ -1,7 +1,8 @@
 #include <iostream>
 #include <string>
-#include <fstream>
+#include "config.h"
 #include <windows.h>
+#include "C:/Program Files/MySQL/MySQL Server 8.0/include/mysql.h"
 
 using namespace std;
 
@@ -36,6 +37,39 @@ class student{
     }
 };
 
+MYSQL* conn;
+
+bool connectDatabase() {
+
+    conn = mysql_init(NULL);
+
+    if (conn == NULL) {
+        cout << "MySQL initialization failed!" << endl;
+        return false;
+    }
+
+    conn = mysql_real_connect(
+        conn,
+        "localhost",
+        "root",
+        DB_PASSWORD,
+        "student_management",
+        3306,
+        NULL,
+        0
+    );
+
+    if (conn == NULL) {
+        cout << "Database connection failed!" << endl;
+        cout << mysql_error(conn) << endl;
+        return false;
+    }
+
+    cout << "Database connected successfully!" << endl;
+
+    return true;
+}
+
 void addStudent(student s){
     string name, rollNo;
     float cgpa;
@@ -61,191 +95,137 @@ void addStudent(student s){
 
     s.setCgpa(cgpa);
 
-    ofstream out("Student.txt", ios::app);
+    string query = "INSERT INTO students (name, roll_no, cgpa) VALUES ('" + s.getName() + "', '" + s.getRollNo() + "', " + to_string(s.getCgpa()) + ")";
 
-    if(!out){
-        cout<<"Error: Student file could not be opened!"<<endl;
+    if(mysql_query(conn, query.c_str()) != 0) {
+        cout << "Error: Student could not be added!" << endl;
+        cout << mysql_error(conn) << endl;
         return;
     }
 
-    out<< s.getName() << " : "<< s.getRollNo()<< " : "<< s.getCgpa()<< endl;
-
-    if(out.fail()){
-        cout<<"Error: Student could not be added!"<<endl;
-        out.close();
-        return;
-    }
-
-    cout<< "student added!"<<endl;
-    out.close();
+    cout << "Student added successfully!" << endl;
 }
 
-void searchStudent(){
+void searchStudent() {
+
     string rollNo;
 
-    cout<< "Enter Roll number of student: "<<endl;
+    cout << "Enter Roll number of student: " << endl;
     cin.ignore();
     getline(cin, rollNo);
 
-    ifstream in("Student.txt");
+    string query =
+        "SELECT id, name, roll_no, cgpa "
+        "FROM students "
+        "WHERE roll_no = '" + rollNo + "'";
 
-    if(!in){
-        cout<<"Error: Student file could not be opened!"<<endl;
+    if (mysql_query(conn, query.c_str()) != 0) {
+        cout << "Error while searching student!" << endl;
+        cout << mysql_error(conn) << endl;
         return;
     }
 
-    string line;
-    bool found = false;
+    MYSQL_RES* result = mysql_store_result(conn);
 
-    while(getline(in, line)){
-        if(line.find(rollNo)!=string::npos){
-            found = true;
-            cout<< line << endl;
-            break;
-        }
+    if (result == NULL) {
+        cout << "Error retrieving result!" << endl;
+        cout << mysql_error(conn) << endl;
+        return;
     }
 
-    if(!found){
-        cout<< "Student not found"<<endl;
+    MYSQL_ROW row = mysql_fetch_row(result);
+
+    if (row != NULL) {
+
+        cout << "\nStudent Found!" << endl;
+        cout << "ID: " << row[0] << endl;
+        cout << "Name: " << row[1] << endl;
+        cout << "Roll No: " << row[2] << endl;
+        cout << "CGPA: " << row[3] << endl;
+
+    }
+    else {
+        cout << "Student not found!" << endl;
     }
 
-    in.close();
+    mysql_free_result(result);
 }
 
-void updateStudent(){
-    cout<< "Enter roll no. of student to be updated: "<<endl;
+ 
+void updateStudent() {
 
     string rollNo;
+
+    cout << "Enter roll no. of student to be updated: " << endl;
     cin.ignore();
     getline(cin, rollNo);
 
-    ifstream in("Student.txt");
+    float cgpa;
 
-    if(!in){
-        cout<<"Error: Student file could not be opened!"<<endl;
+    cout << "Enter new CGPA: " << endl;
+    cin >> cgpa;
+
+    if (cin.fail()) {
+        cin.clear();
+        cin.ignore(10000, '\n');
+        cout << "Invalid CGPA!" << endl;
         return;
     }
 
-    bool found = false;
-    ofstream out("temp.txt");
+    string query =
+        "UPDATE students "
+        "SET cgpa = " + to_string(cgpa) +
+        " WHERE roll_no = '" + rollNo + "'";
 
-    if(!out){
-        cout<<"Error: Temporary file could not be created!"<<endl;
-        in.close();
+    if (mysql_query(conn, query.c_str()) != 0) {
+
+        cout << "Error while updating student!" << endl;
+        cout << mysql_error(conn) << endl;
+
         return;
     }
 
-    string line;
-
-    while(getline(in, line)){
-        if(line.find(rollNo)!=string::npos){
-            found = true;
-
-            cout << "Enter new cgpa: "<<endl;
-            float cgpa;
-            cin>> cgpa;
-
-            if(cin.fail()){
-                cin.clear();
-                cin.ignore(10000, '\n');
-                cout<<"Invalid CGPA!"<<endl;
-                out.close();
-                in.close();
-                remove("temp.txt");
-                return;
-            }
-
-            string CGPA = to_string(cgpa);
-            line.replace(line.find_last_of(':')+2, string::npos, CGPA);
-
-            cout<< "Updated Successfully"<<endl;
-        }
-
-        out<< line<< endl;
+    if (mysql_affected_rows(conn) == 0) {
+        cout << "Student not found!" << endl;
     }
-
-    if(!found){
-        cout<< "Student not found"<<endl;
-        out.close();
-        in.close();
-        remove("temp.txt");
-        return;
-    }
-
-    out.close();
-    in.close();
-
-    if(remove("Student.txt") != 0){
-        cout<<"Error: Could not remove Student.txt"<<endl;
-        remove("temp.txt");
-        return;
-    }
-
-    if(rename("temp.txt", "Student.txt") != 0){
-        cout<<"Error: Could not rename temporary file!"<<endl;
-        return;
+    else {
+        cout << "Student updated successfully!" << endl;
     }
 }
+void deleteStudent() {
 
-void deleteStudent(){
     string rollNo;
 
-    cout<< "Enter Roll number of student to be deleted: "<<endl;
+    cout << "Enter Roll number of student to be deleted: " << endl;
     cin.ignore();
     getline(cin, rollNo);
 
-    ifstream in("Student.txt");
+    string query =
+        "DELETE FROM students "
+        "WHERE roll_no = '" + rollNo + "'";
 
-    if(!in){
-        cout<<"Error: Student file could not be opened!"<<endl;
+    if (mysql_query(conn, query.c_str()) != 0) {
+
+        cout << "Error while deleting student!" << endl;
+        cout << mysql_error(conn) << endl;
+
         return;
     }
 
-    string line;
-    bool found = false;
-
-    ofstream out("temp.txt");
-
-    if(!out){
-        cout<<"Error: Temporary file could not be created!"<<endl;
-        in.close();
-        return;
+    if (mysql_affected_rows(conn) == 0) {
+        cout << "Student not found!" << endl;
     }
-
-    while(getline(in, line)){
-        if(line.find(rollNo)!=string::npos){
-            found = true;
-            cout<< line <<" successfully deleted"<<endl;
-            continue;
-        }
-
-        out<< line<< endl;
-    }
-
-    if(!found){
-        cout<< "Student not found"<<endl;
-        out.close();
-        in.close();
-        remove("temp.txt");
-        return;
-    }
-
-    out.close();
-    in.close();
-
-    if(remove("Student.txt") != 0){
-        cout<<"Error: Could not remove Student.txt"<<endl;
-        remove("temp.txt");
-        return;
-    }
-
-    if(rename("temp.txt", "Student.txt") != 0){
-        cout<<"Error: Could not rename temporary file!"<<endl;
-        return;
+    else {
+        cout << "Student deleted successfully!" << endl;
     }
 }
 
 int main(){
+
+    if (!connectDatabase()) {
+        return 1;
+    }
+
     student s;
     bool exit = false;
 
@@ -303,6 +283,6 @@ int main(){
             Sleep(2000);
         }
     }
-
+    mysql_close(conn);
     return 0;
 }
